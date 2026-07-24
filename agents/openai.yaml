@@ -1,0 +1,7 @@
+interface:
+  display_name: "MR Digest Skill"
+  short_description: "Empty scaffold for future skill work"
+  default_prompt: "Use $mr-digest-skill as a starting scaffold."
+
+policy:
+  allow_implicit_invocation: false
