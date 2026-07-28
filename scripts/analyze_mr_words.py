@@ -13,6 +13,7 @@ import argparse
 import collections
 import dataclasses
 import datetime as dt
+import html
 import re
 import subprocess
 from pathlib import Path
@@ -367,6 +368,113 @@ def md_escape(value: str) -> str:
     return value.replace("|", r"\|").replace("\n", " ")
 
 
+REPORT_STYLE_LINES = [
+    "<style>",
+    "/* mr-digest-report-wide-tables */",
+    "html, body {",
+    "  max-width: none !important;",
+    "  width: 100% !important;",
+    "}",
+    "body {",
+    "  box-sizing: border-box;",
+    "  margin: 0 !important;",
+    "  padding: 24px !important;",
+    "}",
+    "body .markdown-body,",
+    ".markdown-body,",
+    "body main,",
+    "body article,",
+    "body #content,",
+    "body #app {",
+    "  box-sizing: border-box;",
+    "  max-width: none !important;",
+    "  width: 100% !important;",
+    "}",
+    "body .markdown-body table,",
+    ".markdown-body table,",
+    "table {",
+    "  border-collapse: collapse;",
+    "  display: table !important;",
+    "  max-width: 100% !important;",
+    "  min-width: 100% !important;",
+    "  table-layout: auto;",
+    "  width: 100% !important;",
+    "}",
+    "thead, tbody, tr {",
+    "  width: 100%;",
+    "}",
+    "th, td {",
+    "  box-sizing: border-box;",
+    "  vertical-align: top;",
+    "  white-space: normal !important;",
+    "  word-break: break-word;",
+    "  overflow-wrap: anywhere;",
+    "}",
+    "td code, th code {",
+    "  white-space: normal !important;",
+    "}",
+    "code.mr-digest-word-token {",
+    "  display: inline-block;",
+    "  min-width: 14ch;",
+    "  overflow-wrap: normal !important;",
+    "  white-space: nowrap !important;",
+    "  word-break: normal !important;",
+    "}",
+    "table.mr-digest-word-count-diff th:nth-child(1),",
+    "table.mr-digest-word-count-diff td:nth-child(1) {",
+    "  min-width: 16ch;",
+    "  width: 16ch;",
+    "}",
+    "table.mr-digest-word-count-diff th:nth-child(2),",
+    "table.mr-digest-word-count-diff th:nth-child(3),",
+    "table.mr-digest-word-count-diff th:nth-child(4),",
+    "table.mr-digest-word-count-diff td:nth-child(2),",
+    "table.mr-digest-word-count-diff td:nth-child(3),",
+    "table.mr-digest-word-count-diff td:nth-child(4) {",
+    "  min-width: 7ch;",
+    "  text-align: right;",
+    "  white-space: nowrap !important;",
+    "  width: 7ch;",
+    "}",
+    "table.mr-digest-word-count-diff th:nth-child(5),",
+    "table.mr-digest-word-count-diff th:nth-child(6),",
+    "table.mr-digest-word-count-diff td:nth-child(5),",
+    "table.mr-digest-word-count-diff td:nth-child(6) {",
+    "  width: calc((100% - 37ch) / 2);",
+    "}",
+    "pre, pre code {",
+    "  white-space: pre-wrap !important;",
+    "}",
+    "</style>",
+]
+
+
+def with_report_style(lines: Iterable[str]) -> list[str]:
+    styled = list(lines)
+    if any("mr-digest-report-wide-tables" in line for line in styled[:30]):
+        return styled
+    if not styled or not styled[0].startswith("# "):
+        return REPORT_STYLE_LINES + [""] + styled
+    insert_at = 1
+    if len(styled) > 1 and styled[1] == "":
+        insert_at = 2
+    styled[insert_at:insert_at] = REPORT_STYLE_LINES + [""]
+    return styled
+
+
+def write_markdown(path: Path, lines: Iterable[str]) -> None:
+    path.write_text("\n".join(with_report_style(lines)) + "\n")
+
+
+def word_cell(value: str) -> str:
+    escaped = html.escape(value.replace("\n", " "), quote=False).replace("|", "&#124;")
+    return f'<code class="mr-digest-word-token">{escaped}</code>'
+
+
+def html_cell(value: str) -> str:
+    return html.escape(value.replace("\n", " "), quote=False)
+
+
 def symbol_examples(symbols: Iterable[str], limit: int = 12) -> str:
     ordered = sorted(symbols, key=lambda item: (item.lower(), item))
     shown = ordered[:limit]
@@ -408,11 +516,11 @@ def write_words_md(path: Path, analysis: Analysis, *, repo_url: str, mr_url: str
     for word in sorted(analysis.word_counts):
         symbols = analysis.word_symbols[word]
         lines.append(
-            f"| `{md_escape(word)}` | {analysis.word_counts[word]} | "
+            f"| {word_cell(word)} | {analysis.word_counts[word]} | "
             f"{len(symbols)} | {symbol_examples(symbols)} |"
         )
     lines.append("")
-    path.write_text("\n".join(lines))
+    write_markdown(path, lines)
 
 
 def write_diff_md(path: Path, before: Analysis, after: Analysis, *, mr_url: str) -> None:
@@ -445,7 +553,7 @@ def write_diff_md(path: Path, before: Analysis, after: Analysis, *, mr_url: str)
     ]
     for word in added:
         lines.append(
-            f"| `{md_escape(word)}` | {after.word_counts[word]} | "
+            f"| {word_cell(word)} | {after.word_counts[word]} | "
             f"{len(after.word_symbols[word])} | {symbol_examples(after.word_symbols[word])} |"
         )
     if not added:
@@ -462,7 +570,7 @@ def write_diff_md(path: Path, before: Analysis, after: Analysis, *, mr_url: str)
     )
     for word in removed:
         lines.append(
-            f"| `{md_escape(word)}` | {before.word_counts[word]} | "
+            f"| {word_cell(word)} | {before.word_counts[word]} | "
             f"{len(before.word_symbols[word])} | {symbol_examples(before.word_symbols[word])} |"
         )
     if not removed:
@@ -473,8 +581,18 @@ def write_diff_md(path: Path, before: Analysis, after: Analysis, *, mr_url: str)
             "",
             "## Changed Word Counts",
             "",
-            "| word | before | after | delta | before symbols | after symbols |",
-            "| --- | ---: | ---: | ---: | --- | --- |",
+            '<table class="mr-digest-word-count-diff">',
+            "<thead>",
+            "<tr>",
+            "<th>word</th>",
+            "<th>before</th>",
+            "<th>after</th>",
+            "<th>delta</th>",
+            "<th>before symbols</th>",
+            "<th>after symbols</th>",
+            "</tr>",
+            "</thead>",
+            "<tbody>",
         ]
     )
     for word in changed:
@@ -482,15 +600,21 @@ def write_diff_md(path: Path, before: Analysis, after: Analysis, *, mr_url: str)
         after_count = after.word_counts[word]
         delta = after_count - before_count
         lines.append(
-            f"| `{md_escape(word)}` | {before_count} | {after_count} | {delta:+d} | "
-            f"{symbol_examples(before.word_symbols[word], limit=8)} | "
-            f"{symbol_examples(after.word_symbols[word], limit=8)} |"
+            "<tr>"
+            f"<td>{word_cell(word)}</td>"
+            f"<td>{before_count}</td>"
+            f"<td>{after_count}</td>"
+            f"<td>{delta:+d}</td>"
+            f"<td>{html_cell(symbol_examples(before.word_symbols[word], limit=8))}</td>"
+            f"<td>{html_cell(symbol_examples(after.word_symbols[word], limit=8))}</td>"
+            "</tr>"
         )
     if not changed:
-        lines.append("| _none_ | 0 | 0 | 0 |  |  |")
+        lines.append("<tr><td><em>none</em></td><td>0</td><td>0</td><td>0</td><td></td><td></td></tr>")
+    lines.extend(["</tbody>", "</table>"])
 
     lines.append("")
-    path.write_text("\n".join(lines))
+    write_markdown(path, lines)
 
 
 def main() -> None:

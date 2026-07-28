@@ -21,6 +21,7 @@ from analyze_mr_words import (
     md_escape,
     parse_mr_url,
     prepare_mr_revisions,
+    write_markdown,
 )
 
 
@@ -484,7 +485,7 @@ def write_call_graph_md(path: Path, analysis: CallGraphAnalysis, *, repo_url: st
         )
         lines.append(f"- `{md_escape(caller_path)}::{md_escape(caller)}` -> {callees}")
     lines.append("")
-    path.write_text("\n".join(lines))
+    write_markdown(path, lines)
 
 
 def write_call_graph_diff_md(path: Path, before: CallGraphAnalysis, after: CallGraphAnalysis, *, mr_url: str) -> None:
@@ -581,7 +582,7 @@ def write_call_graph_diff_md(path: Path, before: CallGraphAnalysis, after: CallG
         lines.append("- _none_")
 
     lines.append("")
-    path.write_text("\n".join(lines))
+    write_markdown(path, lines)
 
 
 def analyze_from_args(args: argparse.Namespace) -> tuple[CallGraphAnalysis, CallGraphAnalysis, str, str]:

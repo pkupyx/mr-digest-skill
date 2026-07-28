@@ -20,6 +20,7 @@ from analyze_mr_words import (
     md_escape,
     parse_mr_url,
     prepare_mr_revisions,
+    write_markdown,
 )
 
 
@@ -268,7 +269,7 @@ def write_files_md(path: Path, analysis: StructureAnalysis, *, repo_url: str, mr
             f"| `{md_escape(entry.path)}` | {entry.line_count} | {entry.byte_count} | `{entry.digest}` |"
         )
     lines.append("")
-    path.write_text("\n".join(lines))
+    write_markdown(path, lines)
 
 
 def write_functions_md(path: Path, analysis: StructureAnalysis, *, repo_url: str, mr_url: str) -> None:
@@ -294,7 +295,7 @@ def write_functions_md(path: Path, analysis: StructureAnalysis, *, repo_url: str
             f"`{md_escape(entry.receiver)}` | {entry.start_line}-{entry.end_line} | `{entry.digest}` |"
         )
     lines.append("")
-    path.write_text("\n".join(lines))
+    write_markdown(path, lines)
 
 
 def write_structs_md(path: Path, analysis: StructureAnalysis, *, repo_url: str, mr_url: str) -> None:
@@ -319,7 +320,7 @@ def write_structs_md(path: Path, analysis: StructureAnalysis, *, repo_url: str, 
             f"{entry.start_line}-{entry.end_line} | `{entry.digest}` |"
         )
     lines.append("")
-    path.write_text("\n".join(lines))
+    write_markdown(path, lines)
 
 
 def write_file_diff_md(path: Path, before: StructureAnalysis, after: StructureAnalysis, *, mr_url: str) -> None:
@@ -371,7 +372,7 @@ def write_file_diff_md(path: Path, before: StructureAnalysis, after: StructureAn
     if not modified:
         lines.append("| _none_ | 0 | 0 |  |  |")
     lines.append("")
-    path.write_text("\n".join(lines))
+    write_markdown(path, lines)
 
 
 def write_function_diff_md(path: Path, before: StructureAnalysis, after: StructureAnalysis, *, mr_url: str) -> None:
@@ -431,7 +432,7 @@ def write_function_diff_md(path: Path, before: StructureAnalysis, after: Structu
     if not modified:
         lines.append("| _none_ |  |  |  |  |  |")
     lines.append("")
-    path.write_text("\n".join(lines))
+    write_markdown(path, lines)
 
 
 def write_struct_diff_md(path: Path, before: StructureAnalysis, after: StructureAnalysis, *, mr_url: str) -> None:
@@ -491,7 +492,7 @@ def write_struct_diff_md(path: Path, before: StructureAnalysis, after: Structure
     if not modified:
         lines.append("| _none_ |  | 0 | 0 |  |  |")
     lines.append("")
-    path.write_text("\n".join(lines))
+    write_markdown(path, lines)
 
 
 def write_all_outputs(
